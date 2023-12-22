@@ -36,4 +36,49 @@ function discount_on_max_cart(WC_Cart $cart) {
     }
 }
 
+ // OR If already coupon applied and we don't want to apply
+
+// Add 20% Discount on cart prices more then 120$
+add_action('woocommerce_cart_calculate_fees', 'discount_on_max_cart');
+
+/**
+ * Add custom fee if more than 120$
+ * @param WC_Cart $cart
+ */
+function discount_on_max_cart(WC_Cart $cart) {
+	$subtotal = $cart->get_subtotal();
+
+	// Define the minimum subtotal for the discount
+	$minimum_subtotal = 120;
+
+
+	$applied_copn = WC()->cart->get_applied_coupons();
+
+	if( empty( $applied_copn ) ){
+		// Calculate the remaining amount for the discount
+		$remaining_amount = $minimum_subtotal - $subtotal;
+
+		// Check if the subtotal is less than the minimum for the discount
+		if ($subtotal >= $minimum_subtotal) {
+			// Exclude products with a changed price from regular in the cart
+			$non_discounted_items = array_filter($cart->get_cart(), function ($cart_item) {
+				$product = wc_get_product($cart_item['product_id']);
+				return !($product && $product->is_on_sale()) && $product->get_regular_price() === $product->get_price();
+			});
+
+			// Calculate the amount to reduce
+			$discount = array_reduce($non_discounted_items, function ($carry, $cart_item) {
+				return $carry + $cart_item['line_total'];
+			}, 0) * 0.2;
+
+			// Apply discount only if there are non-discounted items in the cart
+			if ($discount > 0) {
+				$cart->add_fee('20% Discount added', -$discount);
+			}
+		}
+	}
+
+
+}
+
 ?>
